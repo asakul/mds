@@ -26,6 +26,8 @@ library
                      , hslogger
                      , time
                      , monad-loops
+                     , text-format
+                     , zeromq4-haskell
   default-language:    Haskell2010
 
 executable mds-exe
