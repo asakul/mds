@@ -121,10 +121,6 @@ doPutData cmdVar respVar tickerId timeInterval timeframe bars = do
   resp <- takeMVar respVar
   case resp of
     DBOk -> return ()
-    DBError err -> do
-      warningM "DB.Client" $ "Error while calling putData: " ++ show err
-      return ()
-    _ -> do
-      warningM "DB.Client" "Unexpected response"
-      return ()
+    DBError err -> warningM "DB.Client" $ "Error while calling putData: " ++ show err
+    _ -> warningM "DB.Client" "Unexpected response"
 
