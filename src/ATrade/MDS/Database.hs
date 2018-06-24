@@ -81,6 +81,7 @@ putData db tickerId (TimeInterval start end) tf@(Timeframe tfSec) bars = do
   stmt <- prepare db $ "INSERT INTO bars (ticker, timeframe, timestamp, open, high, low, close, volume)" ++
     " values (?, ?, ?, ?, ?, ?, ?, ?); "
   executeMany stmt (map (barToSql tf) $ V.toList bars)
+  runRaw db "COMMIT;"
   where
     barToSql :: Timeframe -> Bar -> [SqlValue] 
     barToSql (Timeframe timeframeSecs) bar = [(SqlString . T.unpack . barSecurity) bar,
