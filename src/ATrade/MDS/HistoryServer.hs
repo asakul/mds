@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 
 module ATrade.MDS.HistoryServer (
   HistoryServer,
@@ -77,10 +78,9 @@ serveHAP db sock = forever $ do
     _ -> return ()
   where
     handleCmd :: B.ByteString -> HAPRequest -> [Bar] -> IO ()
-    handleCmd peerId cmd bars = case cmd of
-      rq -> do
-        putData db (hapTicker rq) (TimeInterval (hapStartTime rq) (hapEndTime rq)) (Timeframe $ hapTimeframeSec rq) (V.fromList bars)
-        sendMulti sock $ peerId :| B.empty : ["OK"]
+    handleCmd peerId rq bars = do
+      putData db (hapTicker rq) (TimeInterval (hapStartTime rq) (hapEndTime rq)) (Timeframe $ hapTimeframeSec rq) (V.fromList bars)
+      sendMulti sock $ peerId :| B.empty : ["OK"]
 
     deserializeBars tickerId input =
       case runGetOrFail parseBar input of
