@@ -5,22 +5,22 @@ module ATrade.MDS.HistoryServer (
   startHistoryServer
 ) where
 
-import System.ZMQ4
-import ATrade.Types
-import ATrade.MDS.Database
-import ATrade.MDS.Protocol
-import Control.Concurrent
-import Control.Monad
-import Data.Aeson
-import Data.List.NonEmpty
-import Data.Time.Clock.POSIX
-import qualified Data.Vector as V
-import Safe
-import qualified Data.Text as T
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy as BL
-import Data.Binary.Get
-import Data.Binary.Put
+import           ATrade.MDS.Database
+import           ATrade.MDS.Protocol
+import           ATrade.Types
+import           Control.Concurrent
+import           Control.Monad
+import           Data.Aeson
+import           Data.Binary.Get
+import           Data.Binary.Put
+import qualified Data.ByteString       as B
+import qualified Data.ByteString.Lazy  as BL
+import           Data.List.NonEmpty
+import qualified Data.Text             as T
+import           Data.Time.Clock.POSIX
+import qualified Data.Vector           as V
+import           Safe
+import           System.ZMQ4
 
 data HistoryServer = HistoryServer ThreadId ThreadId
 
@@ -47,7 +47,7 @@ serveQHP db sock = forever $ do
   let maybeCmd = (BL.fromStrict <$> rq `atMay` 2) >>= decode
   case (headMay rq, maybeCmd) of
     (Just peerId, Just cmd) -> handleCmd peerId cmd
-    _ -> return ()
+    _                       -> return ()
   where
     handleCmd :: B.ByteString -> QHPRequest -> IO ()
     handleCmd peerId cmd = case cmd of
@@ -56,8 +56,8 @@ serveQHP db sock = forever $ do
         let bytes = serializeBars $ V.concat $ fmap snd qdata
         sendMulti sock $ peerId :| B.empty : [BL.toStrict bytes]
     serializeBars :: V.Vector Bar -> BL.ByteString
-    serializeBars bars = runPut $ V.forM_ bars serializeBar
-    serializeBar bar = do
+    serializeBars bars = runPut $ V.forM_ bars serializeBar'
+    serializeBar' bar = do
       putWord64le (truncate . utcTimeToPOSIXSeconds . barTimestamp $ bar)
       putDoublele (toDouble . barOpen $ bar)
       putDoublele (toDouble . barHigh $ bar)
@@ -82,9 +82,9 @@ serveHAP db sock = forever $ do
         putData db (hapTicker rq) (TimeInterval (hapStartTime rq) (hapEndTime rq)) (Timeframe $ hapTimeframeSec rq) (V.fromList bars)
         sendMulti sock $ peerId :| B.empty : ["OK"]
 
-    deserializeBars tickerId input = 
+    deserializeBars tickerId input =
       case runGetOrFail parseBar input of
-        Left _ -> []
+        Left _               -> []
         Right (rest, _, bar) -> bar : deserializeBars tickerId rest
       where
         parseBar = do

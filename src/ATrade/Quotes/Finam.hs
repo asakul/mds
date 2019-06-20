@@ -1,6 +1,6 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE FlexibleInstances #-}
 
 module ATrade.Quotes.Finam (
   downloadFinamSymbols,
@@ -17,32 +17,32 @@ module ATrade.Quotes.Finam (
   Row(..)
 ) where
 
-import qualified Data.Text as T
-import qualified Data.Text.ICU.Convert as TC
-import Data.Time.Calendar
-import Network.Wreq
-import Control.Lens
-import Data.Either.Combinators
-import qualified Data.ByteString.Lazy as BL
-import qualified Data.ByteString as B
-import Safe
-import qualified Data.Map as M
-import Text.Parsec
-import Text.ParserCombinators.Parsec.Char
-import Text.ParserCombinators.Parsec.Number
-import Data.List
-import Data.Maybe
-import Control.Error.Util
-import Data.Text.Format
-import Data.Csv
-import Data.Time.Format
-import qualified Data.ByteString.Char8 as B8
-import Data.Time.Clock
-import Data.Decimal
-import Control.Monad
-import Control.Exception
-import qualified Data.Vector as V
-import System.Log.Logger
+import           Control.Error.Util
+import           Control.Exception
+import           Control.Lens
+import           Control.Monad
+import qualified Data.ByteString                      as B
+import qualified Data.ByteString.Char8                as B8
+import qualified Data.ByteString.Lazy                 as BL
+import           Data.Csv
+import           Data.Decimal
+import           Data.Either.Combinators
+import           Data.List
+import qualified Data.Map                             as M
+import           Data.Maybe
+import qualified Data.Text                            as T
+import           Data.Text.Format
+import qualified Data.Text.ICU.Convert                as TC
+import           Data.Time.Calendar
+import           Data.Time.Clock
+import           Data.Time.Format
+import qualified Data.Vector                          as V
+import           Network.Wreq
+import           Safe
+import           System.Log.Logger
+import           Text.Parsec
+import           Text.ParserCombinators.Parsec.Char
+import           Text.ParserCombinators.Parsec.Number
 
 data Period =
   PeriodTick  |
@@ -58,28 +58,28 @@ data Period =
   deriving (Show, Eq)
 
 instance Enum Period where
-  fromEnum PeriodTick = 1
-  fromEnum Period1Min = 2
-  fromEnum Period5Min = 3
+  fromEnum PeriodTick  = 1
+  fromEnum Period1Min  = 2
+  fromEnum Period5Min  = 3
   fromEnum Period10Min = 4
   fromEnum Period15Min = 5
   fromEnum Period30Min = 6
-  fromEnum PeriodHour = 7
-  fromEnum PeriodDay = 8
-  fromEnum PeriodWeek = 9
+  fromEnum PeriodHour  = 7
+  fromEnum PeriodDay   = 8
+  fromEnum PeriodWeek  = 9
   fromEnum PeriodMonth = 10
 
-  toEnum 1 = PeriodTick
-  toEnum 2 = Period1Min
-  toEnum 3 = Period5Min
-  toEnum 4 = Period10Min
-  toEnum 5 = Period15Min
-  toEnum 6 = Period30Min
-  toEnum 7 = PeriodHour
-  toEnum 8 = PeriodDay
-  toEnum 9 = PeriodWeek
+  toEnum 1  = PeriodTick
+  toEnum 2  = Period1Min
+  toEnum 3  = Period5Min
+  toEnum 4  = Period10Min
+  toEnum 5  = Period15Min
+  toEnum 6  = Period30Min
+  toEnum 7  = PeriodHour
+  toEnum 8  = PeriodDay
+  toEnum 9  = PeriodWeek
   toEnum 10 = PeriodMonth
-  toEnum _ = PeriodDay
+  toEnum _  = PeriodDay
 
 data DateFormat =
   FormatYYYYMMDD |
@@ -91,8 +91,8 @@ data DateFormat =
 
 instance Enum DateFormat where
   fromEnum FormatYYYYMMDD = 1
-  fromEnum FormatYYMMDD = 2
-  fromEnum FormatDDMMYY = 3
+  fromEnum FormatYYMMDD   = 2
+  fromEnum FormatDDMMYY   = 3
   fromEnum FormatDD_MM_YY = 4
   fromEnum FormatMM_DD_YY = 5
 
@@ -112,10 +112,10 @@ data TimeFormat =
   deriving (Show, Eq)
 
 instance Enum TimeFormat where
-  fromEnum FormatHHMMSS = 1
-  fromEnum FormatHHMM = 2
+  fromEnum FormatHHMMSS   = 1
+  fromEnum FormatHHMM     = 2
   fromEnum FormatHH_MM_SS = 3
-  fromEnum FormatHH_MM = 4
+  fromEnum FormatHH_MM    = 4
 
   toEnum 1 = FormatHHMMSS
   toEnum 2 = FormatHHMM
@@ -132,11 +132,11 @@ data FieldSeparator =
   deriving (Show, Eq)
 
 instance Enum FieldSeparator where
-  fromEnum SeparatorComma = 1
-  fromEnum SeparatorPeriod = 2
+  fromEnum SeparatorComma     = 1
+  fromEnum SeparatorPeriod    = 2
   fromEnum SeparatorSemicolon = 3
-  fromEnum SeparatorTab = 4
-  fromEnum SeparatorSpace = 5
+  fromEnum SeparatorTab       = 4
+  fromEnum SeparatorSpace     = 5
 
   toEnum 1 = SeparatorComma
   toEnum 2 = SeparatorPeriod
@@ -146,15 +146,15 @@ instance Enum FieldSeparator where
   toEnum _ = SeparatorComma
 
 data RequestParams = RequestParams {
-  ticker :: T.Text,
-  startDate :: Day,
-  endDate :: Day,
-  period :: Period,
-  dateFormat :: DateFormat,
-  timeFormat :: TimeFormat,
+  ticker         :: T.Text,
+  startDate      :: Day,
+  endDate        :: Day,
+  period         :: Period,
+  dateFormat     :: DateFormat,
+  timeFormat     :: TimeFormat,
   fieldSeparator :: FieldSeparator,
-  includeHeader :: Bool,
-  fillEmpty :: Bool
+  includeHeader  :: Bool,
+  fillEmpty      :: Bool
 }
 
 defaultParams = RequestParams {
@@ -170,9 +170,9 @@ defaultParams = RequestParams {
 }
 
 data Symbol = Symbol {
-  symCode :: T.Text,
-  symName :: T.Text,
-  symId :: Integer,
+  symCode       :: T.Text,
+  symName       :: T.Text,
+  symId         :: Integer,
   symMarketCode :: Integer,
   symMarketName :: T.Text
 }
@@ -180,11 +180,11 @@ data Symbol = Symbol {
 
 data Row = Row {
   rowTicker :: T.Text,
-  rowTime :: UTCTime,
-  rowOpen :: Decimal,
-  rowHigh :: Decimal,
-  rowLow :: Decimal,
-  rowClose :: Decimal,
+  rowTime   :: UTCTime,
+  rowOpen   :: Decimal,
+  rowHigh   :: Decimal,
+  rowLow    :: Decimal,
+  rowClose  :: Decimal,
   rowVolume :: Integer
 } deriving (Show, Eq)
 
@@ -223,7 +223,7 @@ downloadAndParseQuotes params = downloadAndParseQuotes' params 3
 
 parseQuotes :: B.ByteString -> Maybe [Row]
 parseQuotes csvData = case decode HasHeader $ BL.fromStrict csvData of
-  Left _ -> Nothing
+  Left _  -> Nothing
   Right d -> Just $ V.toList d
 
 downloadQuotes :: RequestParams -> IO (Maybe B.ByteString)
@@ -231,7 +231,7 @@ downloadQuotes params =  do
   symbols <- downloadFinamSymbols
   case requestUrl symbols params of
     Just (url, options) -> do
-      resp <- getWith options url 
+      resp <- getWith options url
       return $ Just $ BL.toStrict $ resp ^. responseBody
     Nothing -> return Nothing
 
@@ -269,7 +269,7 @@ requestUrl symbols params = case getFinamCode symbols (ticker params) of
 getFinamCode :: [Symbol] -> T.Text -> Maybe (Integer, Integer)
 getFinamCode symbols ticker = case find (\x -> symCode x == ticker && symMarketCode x `notElem` archives) symbols of
   Just sym -> Just (symId sym, symMarketCode sym)
-  Nothing -> Nothing
+  Nothing  -> Nothing
 
 downloadFinamSymbols :: IO [Symbol]
 downloadFinamSymbols = do
