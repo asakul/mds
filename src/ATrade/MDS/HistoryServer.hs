@@ -21,6 +21,8 @@ import qualified Data.Text             as T
 import           Data.Time.Clock.POSIX
 import qualified Data.Vector           as V
 import           Safe
+
+import           System.Log.Logger
 import           System.ZMQ4
 
 data HistoryServer = HistoryServer ThreadId ThreadId
@@ -53,6 +55,7 @@ serveQHP db sock = forever $ do
     handleCmd :: B.ByteString -> QHPRequest -> IO ()
     handleCmd peerId cmd = case cmd of
       rq -> do
+        debugM "QHP" $ "Incoming command: " ++ show cmd
         qdata <- getData db (rqTicker rq) (TimeInterval (rqStartTime rq) (rqEndTime rq)) (Timeframe (periodSeconds $ rqPeriod rq))
         let bytes = serializeBars $ V.concat $ fmap snd qdata
         sendMulti sock $ peerId :| B.empty : [BL.toStrict bytes]
@@ -79,6 +82,7 @@ serveHAP db sock = forever $ do
   where
     handleCmd :: B.ByteString -> HAPRequest -> [Bar] -> IO ()
     handleCmd peerId rq bars = do
+      debugM "HAP" $ "Incoming command: " ++ show rq
       putData db (hapTicker rq) (TimeInterval (hapStartTime rq) (hapEndTime rq)) (Timeframe $ hapTimeframeSec rq) (V.fromList bars)
       sendMulti sock $ peerId :| B.empty : ["OK"]
 

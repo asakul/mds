@@ -14,19 +14,18 @@ module ATrade.MDS.Database (
   timeframeMinute
 ) where
 
-import qualified Data.Text as T
-import qualified Data.Vector as V
-import ATrade.Types
-import Data.Time.Clock
-import Data.Time.Clock.POSIX
-import Data.Maybe
-import Database.HDBC
-import Database.HDBC.Sqlite3
-import Control.Monad
+import           ATrade.Types
+import           Control.Monad
+import           Data.Maybe
+import qualified Data.Text             as T
+import           Data.Time.Clock
+import           Data.Time.Clock.POSIX
+import qualified Data.Vector           as V
+import           Database.HDBC
+import           Database.HDBC.Sqlite3
 
 
 data TimeInterval = TimeInterval UTCTime UTCTime
-
 data Timeframe = Timeframe Int
 
 timeframeDaily :: Int -> Timeframe
@@ -39,9 +38,9 @@ timeframeMinute :: Int -> Timeframe
 timeframeMinute mins = Timeframe (mins * 60)
 
 data DatabaseConfig = DatabaseConfig {
-  dbPath :: T.Text,
+  dbPath     :: T.Text,
   dbDatabase :: T.Text,
-  dbUser :: T.Text,
+  dbUser     :: T.Text,
   dbPassword :: T.Text
 } deriving (Show, Eq)
 
@@ -83,7 +82,7 @@ putData db tickerId (TimeInterval start end) tf@(Timeframe tfSec) bars = do
   executeMany stmt (map (barToSql tf) $ V.toList bars)
   runRaw db "COMMIT;"
   where
-    barToSql :: Timeframe -> Bar -> [SqlValue] 
+    barToSql :: Timeframe -> Bar -> [SqlValue]
     barToSql (Timeframe timeframeSecs) bar = [(SqlString . T.unpack . barSecurity) bar,
       (SqlInteger . toInteger) timeframeSecs,
       (SqlPOSIXTime . utcTimeToPOSIXSeconds . barTimestamp) bar,

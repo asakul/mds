@@ -49,6 +49,7 @@ executable mds-exe
                      , aeson
                      , text
                      , bytestring
+                     , hslogger
                      , zeromq4-haskell
   default-language:    Haskell2010
   default-extensions:  OverloadedStrings
