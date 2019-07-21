@@ -93,9 +93,9 @@ instance FromJSON HAPRequest where
     v .: "timeframe_sec"
 
 parseTime :: T.Text -> Aeson.Parser UTCTime
-parseTime text = case Attoparsec.parse timeParse text of
-  Done _ r -> return r
-  _        -> fail $ "Can't parse time: " ++ T.unpack text
+parseTime text = case Attoparsec.parseOnly (timeParse <* Attoparsec.endOfInput) text of
+  Right r -> return r
+  Left e  -> fail $ "Can't parse time: " ++ T.unpack text ++ "/" ++ e
 timeParse :: Attoparsec.Parser UTCTime
 timeParse = do
   year <- decimal
@@ -105,9 +105,9 @@ timeParse = do
   day <- decimal
   void $ char 'T'
   hour <- decimal
-  void $ char '-'
+  void $ char ':'
   minute <- decimal
-  void $ char '-'
+  void $ char ':'
   sec <- decimal
   case fromGregorianValid year month day of
     Just gregorianDay -> return $ UTCTime gregorianDay (secondsToDiffTime $ hour * 3600 + minute * 60 + sec)

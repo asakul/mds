@@ -11,6 +11,7 @@ import           ATrade.MDS.HistoryServer
 import           Control.Concurrent
 import           Control.Monad
 
+import           System.IO
 import           System.Log.Formatter
 import           System.Log.Handler        (setFormatter)
 import           System.Log.Handler.Simple
@@ -42,9 +43,13 @@ initLogging = do
   handler <- fileHandler "mds.log" DEBUG >>=
     (\x -> return $
       setFormatter x (simpleLogFormatter "$utcTime\t {$loggername} <$prio> -> $msg"))
+  stderrHandler <- streamHandler stderr DEBUG >>=
+    (\x -> return $
+      setFormatter x (simpleLogFormatter "$utcTime\t {$loggername} <$prio> -> $msg"))
 
+  hSetBuffering stderr LineBuffering
   updateGlobalLogger rootLoggerName (setLevel DEBUG)
-  updateGlobalLogger rootLoggerName (setHandlers [handler])
+  updateGlobalLogger rootLoggerName (setHandlers [handler, stderrHandler])
 
 getConfig :: IO MdsConfig
 getConfig = do
