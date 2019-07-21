@@ -23,6 +23,7 @@ import           Data.Time.Clock.POSIX
 import qualified Data.Vector           as V
 import           Database.HDBC
 import           Database.HDBC.Sqlite3
+import           System.Log.Logger
 
 
 data TimeInterval = TimeInterval UTCTime UTCTime
@@ -48,8 +49,10 @@ type MdsHandle = Connection
 
 initDatabase :: DatabaseConfig -> IO MdsHandle
 initDatabase config = do
+  infoM "DB" $ "Initializing DB"
   conn <- connectSqlite3 (T.unpack $ dbPath config)
   makeSchema conn
+  infoM "DB" $ "Schema updated"
   return conn
   where
     makeSchema conn = runRaw conn "CREATE TABLE IF NOT EXISTS bars (id SERIAL PRIMARY KEY, ticker TEXT, timestamp BIGINT, timeframe INTEGER, open NUMERIC(20, 10), high NUMERIC(20, 10), low NUMERIC(20, 10), close NUMERIC(20,10), volume BIGINT);"

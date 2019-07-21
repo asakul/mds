@@ -11,7 +11,6 @@ import           ATrade.MDS.HistoryServer
 import           Control.Concurrent
 import           Control.Monad
 
-import           System.IO
 import           System.Log.Formatter
 import           System.Log.Handler        (setFormatter)
 import           System.Log.Handler.Simple
@@ -44,7 +43,6 @@ initLogging = do
     (\x -> return $
       setFormatter x (simpleLogFormatter "$utcTime\t {$loggername} <$prio> -> $msg"))
 
-  hSetBuffering stderr LineBuffering
   updateGlobalLogger rootLoggerName (setLevel DEBUG)
   updateGlobalLogger rootLoggerName (setHandlers [handler])
 
@@ -58,22 +56,22 @@ getConfig = do
 main :: IO ()
 main = do
   initLogging
-  debugM "main" "Initializing MDS"
+  infoM "main" "Initializing MDS"
   cfg <- getConfig
-  debugM "main" "Config OK"
+  infoM "main" "Config OK"
   let dbConfig = DatabaseConfig { dbPath = cfgDbPath cfg,
     dbDatabase = cfgDbName cfg,
     dbUser = cfgDbAccount cfg,
     dbPassword = cfgDbPassword cfg }
 
   db <- initDatabase dbConfig
-  debugM "main" "DB initialized"
+  infoM "main" "DB initialized"
 
   let hsConfig = HistoryServerConfig {
     hspQHPEndpoint = cfgQHPEndpoint cfg,
     hspHAPEndpoint = cfgHAPEndpoint cfg }
 
-  debugM "main" "Starting history server"
+  infoM "main" "Starting history server"
   withContext $ \ctx -> do
     _ <- startHistoryServer hsConfig db ctx
     forever $ threadDelay 1000000
