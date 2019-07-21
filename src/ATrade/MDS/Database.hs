@@ -78,12 +78,13 @@ getData db tickerId interval@(TimeInterval start end) (Timeframe tfSec) = do
 
 putData :: MdsHandle -> TickerId -> TimeInterval -> Timeframe -> V.Vector Bar -> IO ()
 putData db tickerId (TimeInterval start end) tf@(Timeframe tfSec) bars = do
-  delStmt <- prepare db "DELETE FROM bars WHERE timestamp >= ? AND timestamp <= ? AND ticker == ? AND timeframe == ?;"
-  void $ execute delStmt [(SqlPOSIXTime . utcTimeToPOSIXSeconds) start, (SqlPOSIXTime . utcTimeToPOSIXSeconds) end, (SqlString . T.unpack) tickerId, (SqlInteger . toInteger) tfSec]
-  stmt <- prepare db $ "INSERT INTO bars (ticker, timeframe, timestamp, open, high, low, close, volume)" ++
-    " values (?, ?, ?, ?, ?, ?, ?, ?); "
-  executeMany stmt (map (barToSql tf) $ V.toList bars)
-  runRaw db "COMMIT;"
+  withTransaction db $ \db' -> do
+    delStmt <- prepare db' "DELETE FROM bars WHERE timestamp >= ? AND timestamp <= ? AND ticker == ? AND timeframe == ?;"
+    void $ execute delStmt [(SqlPOSIXTime . utcTimeToPOSIXSeconds) start, (SqlPOSIXTime . utcTimeToPOSIXSeconds) end, (SqlString . T.unpack) tickerId, (SqlInteger . toInteger) tfSec]
+    stmt <- prepare db' $ "INSERT INTO bars (ticker, timeframe, timestamp, open, high, low, close, volume)" ++
+        " values (?, ?, ?, ?, ?, ?, ?, ?); "
+    executeMany stmt (map (barToSql tf) $ V.toList bars)
+    commit db'
   where
     barToSql :: Timeframe -> Bar -> [SqlValue]
     barToSql (Timeframe timeframeSecs) bar = [(SqlString . T.unpack . barSecurity) bar,

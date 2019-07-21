@@ -84,6 +84,7 @@ serveHAP db sock = forever $ do
     handleCmd peerId rq bars = do
       debugM "HAP" $ "Incoming command: " ++ show rq
       putData db (hapTicker rq) (TimeInterval (hapStartTime rq) (hapEndTime rq)) (Timeframe $ hapTimeframeSec rq) (V.fromList bars)
+      debugM "HAP" $ "Data updated"
       sendMulti sock $ peerId :| B.empty : ["OK"]
 
     deserializeBars tickerId input =
