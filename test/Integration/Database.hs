@@ -3,34 +3,45 @@ module Integration.Database (
   testDatabase
 ) where
 
-import Test.Tasty
-import Test.Tasty.HUnit
+import           Test.Tasty
+import           Test.Tasty.HUnit
 
-import ATrade.MDS.Database
+import           ATrade.MDS.Database
 
-import ATrade.Types
-import Control.Exception
-import Data.DateTime
-import Data.Time.Clock
-import qualified Data.Text as T
-import qualified Data.Vector as V
-import System.IO.Temp
+import           ATrade.Types
+import           Control.Exception
+import           Data.DateTime
+import qualified Data.Text           as T
+import           Data.Time.Clock
+import qualified Data.Vector         as V
+import           System.IO.Temp
 
 testDatabase :: TestTree
-testDatabase = testGroup "Database tests" [ testOpenClose
+testDatabase = testGroup "Database tests" [
+    testOpenClose
+  , testOpenCloseTwice
   , testPutGet
   , testGetReturnsSorted ]
 
 testOpenClose :: TestTree
-testOpenClose = testCase "Open/Close" $ 
+testOpenClose = testCase "Open/Close" $
   withSystemTempDirectory "test" $ \fp -> do
-    let dbConfig = DatabaseConfig (T.pack $ fp ++ "/test.db") T.empty T.empty T.empty 
+    let dbConfig = DatabaseConfig (T.pack $ fp ++ "/test.db") T.empty T.empty T.empty
     db <- initDatabase dbConfig
     closeDatabase db
 
+testOpenCloseTwice :: TestTree
+testOpenCloseTwice = testCase "Open/Close twice" $
+  withSystemTempDirectory "test" $ \fp -> do
+    let dbConfig = DatabaseConfig (T.pack $ fp ++ "/test.db") T.empty T.empty T.empty
+    db <- initDatabase dbConfig
+    closeDatabase db
+    db2 <- initDatabase dbConfig
+    closeDatabase db2
+
 
 bar :: UTCTime -> Price -> Price -> Price -> Price -> Integer -> Bar
-bar dt o h l c v = Bar { barSecurity = "FOO", 
+bar dt o h l c v = Bar { barSecurity = "FOO",
   barTimestamp = dt,
   barOpen = o,
   barHigh = h,
@@ -39,9 +50,9 @@ bar dt o h l c v = Bar { barSecurity = "FOO",
   barVolume = v }
 
 testPutGet :: TestTree
-testPutGet = testCase "Put/Get" $ 
+testPutGet = testCase "Put/Get" $
   withSystemTempDirectory "test" $ \fp -> do
-    let dbConfig = DatabaseConfig (T.pack $ fp ++ "/test.db") T.empty T.empty T.empty 
+    let dbConfig = DatabaseConfig (T.pack $ fp ++ "/test.db") T.empty T.empty T.empty
     bracket (initDatabase dbConfig) closeDatabase $ \db -> do
       putData db "FOO" interval (timeframeMinute 1) bars
       retrievedBars <- (snd . head) <$> getData db "FOO" interval (timeframeMinute 1)
@@ -56,9 +67,9 @@ testPutGet = testCase "Put/Get" $
       ]
 
 testGetReturnsSorted :: TestTree
-testGetReturnsSorted = testCase "Get returns sorted vector" $ 
+testGetReturnsSorted = testCase "Get returns sorted vector" $
   withSystemTempDirectory "test" $ \fp -> do
-    let dbConfig = DatabaseConfig (T.pack $ fp ++ "/test.db") T.empty T.empty T.empty 
+    let dbConfig = DatabaseConfig (T.pack $ fp ++ "/test.db") T.empty T.empty T.empty
     bracket (initDatabase dbConfig) closeDatabase $ \db -> do
       putData db "FOO" interval (timeframeMinute 1) bars
       retrievedBars <- (snd . head) <$> getData db "FOO" interval (timeframeMinute 1)

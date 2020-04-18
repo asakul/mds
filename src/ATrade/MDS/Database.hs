@@ -52,10 +52,12 @@ initDatabase config = do
   infoM "DB" $ "Initializing DB"
   conn <- connectSqlite3 (T.unpack $ dbPath config)
   makeSchema conn
+  makeIndex conn
   infoM "DB" $ "Schema updated"
   return conn
   where
     makeSchema conn = runRaw conn "CREATE TABLE IF NOT EXISTS bars (id SERIAL PRIMARY KEY, ticker TEXT, timestamp BIGINT, timeframe INTEGER, open NUMERIC(20, 10), high NUMERIC(20, 10), low NUMERIC(20, 10), close NUMERIC(20,10), volume BIGINT);"
+    makeIndex conn = runRaw conn "CREATE INDEX IF NOT EXISTS idx_bars ON bars (ticker, timeframe);"
 
 closeDatabase :: MdsHandle -> IO ()
 closeDatabase = disconnect
