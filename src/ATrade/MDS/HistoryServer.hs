@@ -58,7 +58,7 @@ serveQHP db sock = forever $ do
         debugM "QHP" $ "Incoming command: " ++ show cmd
         qdata <- getData db (rqTicker rq) (TimeInterval (rqStartTime rq) (rqEndTime rq)) (Timeframe (periodSeconds $ rqPeriod rq))
         let bytes = serializeBars $ V.concat $ fmap snd qdata
-        sendMulti sock $ peerId :| B.empty : [BL.toStrict bytes]
+        sendMulti sock $ peerId :| [B.empty, "OK", BL.toStrict bytes]
     serializeBars :: V.Vector Bar -> BL.ByteString
     serializeBars bars = runPut $ V.forM_ bars serializeBar'
     serializeBar' bar = do
