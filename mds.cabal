@@ -36,6 +36,7 @@ library
                      , attoparsec
                      , binary
                      , binary-ieee754
+                     , conduit
   default-language:    Haskell2010
   other-modules:       ATrade.MDS.Protocol
   default-extensions:  OverloadedStrings

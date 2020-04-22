@@ -6,6 +6,7 @@ module ATrade.MDS.Database (
   initDatabase,
   closeDatabase,
   getData,
+  getDataConduit,
   putData,
   TimeInterval(..),
   Timeframe(..),
@@ -16,11 +17,14 @@ module ATrade.MDS.Database (
 
 import           ATrade.Types
 import           Control.Monad
+import           Control.Monad.IO.Class
+import           Control.Monad.Loops
+import           Data.Conduit
 import           Data.Maybe
-import qualified Data.Text             as T
+import qualified Data.Text              as T
 import           Data.Time.Clock
 import           Data.Time.Clock.POSIX
-import qualified Data.Vector           as V
+import qualified Data.Vector            as V
 import           Database.HDBC
 import           Database.HDBC.Sqlite3
 import           System.Log.Logger
@@ -66,6 +70,25 @@ getData :: MdsHandle -> TickerId -> TimeInterval -> Timeframe -> IO [(TimeInterv
 getData db tickerId interval@(TimeInterval start end) (Timeframe tfSec) = do
   rows <- quickQuery' db "SELECT timestamp, timeframe, open, high, low, close, volume FROM bars WHERE ticker == ? AND timeframe == ? AND timestamp >= ? AND timestamp <= ? ORDER BY timestamp ASC;" [(toSql. T.unpack) tickerId, toSql tfSec, (toSql . utcTimeToPOSIXSeconds) start, (toSql . utcTimeToPOSIXSeconds) end]
   return [(interval, V.fromList $ mapMaybe (barFromResult tickerId) rows)]
+  where
+    barFromResult ticker [ts, _, open, high, low, close, vol] = Just Bar {
+      barSecurity = ticker,
+      barTimestamp = fromSql ts,
+      barOpen = fromDouble $ fromSql open,
+      barHigh = fromDouble $ fromSql high,
+      barLow = fromDouble $ fromSql low,
+      barClose = fromDouble $ fromSql close,
+      barVolume = fromSql vol
+    }
+    barFromResult _ _ = Nothing
+
+getDataConduit :: (MonadIO m) => MdsHandle -> TickerId -> TimeInterval -> Timeframe -> ConduitT () Bar m ()
+getDataConduit db tickerId (TimeInterval start end) (Timeframe tfSec) = do
+  stmt <- liftIO $ prepare db "SELECT timestamp, timeframe, open, high, low, close, volume FROM bars WHERE ticker == ? AND timeframe == ? AND timestamp >= ? AND timestamp <= ? ORDER BY timestamp ASC;"
+  _ <- liftIO $ execute stmt [(toSql. T.unpack) tickerId, toSql tfSec, (toSql . utcTimeToPOSIXSeconds) start, (toSql . utcTimeToPOSIXSeconds) end]
+  whileJust_ (liftIO $ fetchRow stmt) $ \row -> case barFromResult tickerId row of
+    Just bar -> yield bar
+    Nothing  -> return ()
   where
     barFromResult ticker [ts, _, open, high, low, close, vol] = Just Bar {
       barSecurity = ticker,

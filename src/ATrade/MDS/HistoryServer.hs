@@ -11,15 +11,18 @@ import           ATrade.MDS.Protocol
 import           ATrade.Types
 import           Control.Concurrent
 import           Control.Monad
+import           Control.Monad.IO.Class
 import           Data.Aeson
 import           Data.Binary.Get
 import           Data.Binary.Put
-import qualified Data.ByteString       as B
-import qualified Data.ByteString.Lazy  as BL
+import qualified Data.ByteString          as B
+import qualified Data.ByteString.Lazy     as BL
+import           Data.Conduit             as C
+import           Data.Conduit.Combinators
 import           Data.List.NonEmpty
-import qualified Data.Text             as T
+import qualified Data.Text                as T
 import           Data.Time.Clock.POSIX
-import qualified Data.Vector           as V
+import qualified Data.Vector              as V
 import           Safe
 
 import           System.Log.Logger
@@ -56,9 +59,20 @@ serveQHP db sock = forever $ do
     handleCmd peerId cmd = case cmd of
       rq -> do
         debugM "QHP" $ "Incoming command: " ++ show cmd
-        qdata <- getData db (rqTicker rq) (TimeInterval (rqStartTime rq) (rqEndTime rq)) (Timeframe (periodSeconds $ rqPeriod rq))
-        let bytes = serializeBars $ V.concat $ fmap snd qdata
-        sendMulti sock $ peerId :| [B.empty, "OK", BL.toStrict bytes]
+        let dataC = getDataConduit db (rqTicker rq) (TimeInterval (rqStartTime rq) (rqEndTime rq)) (Timeframe (periodSeconds $ rqPeriod rq))
+        runConduit $ dataC .| (conduitVector chunkSize) .| (sendChunks peerId)
+        --qdata <- getData db (rqTicker rq) (TimeInterval (rqStartTime rq) (rqEndTime rq)) (Timeframe (periodSeconds $ rqPeriod rq))
+        --let bytes = serializeBars $ V.concat $ fmap snd qdata
+        --sendMulti sock $ peerId :| [B.empty, "OK", BL.toStrict bytes]
+    sendChunks :: (MonadIO m) => B.ByteString -> ConduitT (V.Vector Bar) Void m ()
+    sendChunks peerId = do
+      liftIO $ send sock [SendMore] peerId
+      liftIO $ send sock [SendMore] B.empty
+      liftIO $ send sock [SendMore] "OK"
+      awaitForever $ \vBars -> liftIO $ do
+        debugM "QHP" $ "Sending chunk: " ++ show (V.length vBars) ++ " bars"
+        send sock [SendMore] $ BL.toStrict $ serializeBars vBars
+      liftIO $ send sock [] B.empty
     serializeBars :: V.Vector Bar -> BL.ByteString
     serializeBars bars = runPut $ V.forM_ bars serializeBar'
     serializeBar' bar = do
@@ -68,6 +82,8 @@ serveQHP db sock = forever $ do
       putDoublele (toDouble . barLow $ bar)
       putDoublele (toDouble . barClose $ bar)
       putWord64le (fromInteger . barVolume $ bar)
+
+    chunkSize = 4096
 
 serveHAP :: (Sender a, Receiver a) => MdsHandle -> Socket a -> IO ()
 serveHAP db sock = forever $ do
