@@ -59,7 +59,7 @@ serveQHP db sock = forever $ do
     handleCmd peerId cmd = case cmd of
       rq -> do
         debugM "QHP" $ "Incoming command: " ++ show cmd
-        let dataC = getDataConduit db (rqTicker rq) (TimeInterval (rqStartTime rq) (rqEndTime rq)) (Timeframe (periodSeconds $ rqPeriod rq))
+        let dataC = getDataConduit db (replaceWildcards $ rqTicker rq) (TimeInterval (rqStartTime rq) (rqEndTime rq)) (Timeframe (periodSeconds $ rqPeriod rq))
         runConduit $ dataC .| (conduitVector chunkSize) .| (sendChunks peerId)
         --qdata <- getData db (rqTicker rq) (TimeInterval (rqStartTime rq) (rqEndTime rq)) (Timeframe (periodSeconds $ rqPeriod rq))
         --let bytes = serializeBars $ V.concat $ fmap snd qdata
@@ -84,6 +84,8 @@ serveQHP db sock = forever $ do
       putWord64le (fromInteger . barVolume $ bar)
 
     chunkSize = 4096
+
+    replaceWildcards = T.map (\x -> if x == '?' then '_' else x)
 
 serveHAP :: (Sender a, Receiver a) => MdsHandle -> Socket a -> IO ()
 serveHAP db sock = forever $ do

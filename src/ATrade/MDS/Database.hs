@@ -84,7 +84,7 @@ getData db tickerId interval@(TimeInterval start end) (Timeframe tfSec) = do
 
 getDataConduit :: (MonadIO m) => MdsHandle -> TickerId -> TimeInterval -> Timeframe -> ConduitT () Bar m ()
 getDataConduit db tickerId (TimeInterval start end) (Timeframe tfSec) = do
-  stmt <- liftIO $ prepare db "SELECT timestamp, timeframe, open, high, low, close, volume FROM bars WHERE ticker == ? AND timeframe == ? AND timestamp >= ? AND timestamp <= ? ORDER BY timestamp ASC;"
+  stmt <- liftIO $ prepare db "SELECT timestamp, timeframe, open, high, low, close, volume FROM bars WHERE ticker LIKE ? AND timeframe == ? AND timestamp >= ? AND timestamp <= ? ORDER BY timestamp ASC;"
   _ <- liftIO $ execute stmt [(toSql. T.unpack) tickerId, toSql tfSec, (toSql . utcTimeToPOSIXSeconds) start, (toSql . utcTimeToPOSIXSeconds) end]
   whileJust_ (liftIO $ fetchRow stmt) $ \row -> case barFromResult tickerId row of
     Just bar -> yield bar
